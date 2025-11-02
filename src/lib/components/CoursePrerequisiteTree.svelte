@@ -1,66 +1,105 @@
 <script lang="ts">
-	import type { PrerequisiteTree } from '$lib/types/course';
+	import { getTree } from '$lib/data/mockPrerequisiteTrees';
+	import type { SimpleTree } from '$lib/data/mockPrerequisiteTrees';
+	import PrerequisiteTreeVisualization from './PrerequisiteTreeVisualization.svelte';
 	
 	let { courseCode } = $props<{ courseCode: string }>();
 	
-	// Mock data - would come from API
-	let prerequisiteTree = $state<PrerequisiteTree | null>(null);
+	let tree = $derived.by(() => {
+		if (!courseCode) return null;
+		return getTree(courseCode);
+	});
 	
-	// This would fetch from API in real implementation
+	let loading = $state(false);
+	let error = $state<string | null>(null);
+	
+	// Simulate loading
 	$effect(() => {
 		if (courseCode) {
-			// Simulate API call
+			loading = true;
 			setTimeout(() => {
-				prerequisiteTree = {
-					course: {
-						id: '1',
-						code: courseCode,
-						name: 'Sample Course',
-						credits: 6,
-						department: 'Computer Science',
-						faculty: 'Engineering'
-					},
-					prerequisites: [],
-					status: 'met'
-				};
-			}, 500);
+				loading = false;
+				if (!tree) {
+					error = `Course ${courseCode} not found in prototype data`;
+				} else {
+					error = null;
+				}
+			}, 200);
+		} else {
+			loading = false;
+			error = null;
 		}
 	});
 </script>
 
-{#if prerequisiteTree}
-	<div class="mt-6">
+{#if loading}
+	<div class="mt-6 flex items-center justify-center py-12">
+		<div class="text-center">
+			<div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--hku-green)] mb-4"></div>
+			<p class="text-gray-600">Loading prerequisite tree...</p>
+		</div>
+	</div>
+{:else if error}
+	<div class="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+		<p class="text-red-800 font-semibold">Course Not Found</p>
+		<p class="text-red-600 text-sm mt-1">{error}</p>
+		<p class="text-red-600 text-xs mt-2">
+			Available courses: COMP3111, COMP3001, COMP4001, COMP1111
+		</p>
+	</div>
+{:else if tree}
+	<div class="mt-6 space-y-4">
+		<!-- Course Header -->
 		<div class="flex items-center justify-between mb-4">
-			<div>
-				<h2 class="text-xl font-bold">{prerequisiteTree.course.code}</h2>
-				<p class="text-gray-600">{prerequisiteTree.course.name}</p>
+			<div class="flex-1">
+				<h2 class="text-2xl font-bold text-gray-900">{tree.courseCode}</h2>
+				<p class="text-gray-600 mt-1">{tree.courseName}</p>
 			</div>
 			<div
-				class="px-4 py-2 rounded-lg {prerequisiteTree.status === 'met'
+				class="px-4 py-2 rounded-lg font-semibold {tree.status === 'met'
 					? 'bg-green-100 text-green-800'
-					: prerequisiteTree.status === 'partial'
+					: tree.status === 'partial'
 						? 'bg-yellow-100 text-yellow-800'
 						: 'bg-red-100 text-red-800'}"
 			>
-				{prerequisiteTree.status === 'met'
+				{tree.status === 'met'
 					? '✅ All Prerequisites Met'
-					: prerequisiteTree.status === 'partial'
+					: tree.status === 'partial'
 						? '⚠️ Partially Met'
 						: '❌ Prerequisites Not Met'}
 			</div>
 		</div>
 		
-		<div class="border border-gray-200 rounded-lg p-6">
-			<p class="text-sm text-gray-600 mb-4">
-				Interactive prerequisite tree visualization will be displayed here.
-				This will show the hierarchical structure of all course prerequisites.
-			</p>
-			
-			{#if prerequisiteTree.prerequisites.length === 0}
-				<p class="text-gray-500 italic">No prerequisites required for this course.</p>
+		<!-- Prerequisite Tree Visualization -->
+		<div class="mt-4">
+			<h3 class="text-lg font-semibold mb-4 text-gray-900">Prerequisite Tree</h3>
+			{#if tree.prerequisites && Array.isArray(tree.prerequisites) && tree.prerequisites.length > 0}
+				<PrerequisiteTreeVisualization {tree} />
+			{:else}
+				<div class="border border-gray-200 rounded-lg p-12 bg-gray-50 text-center">
+					<p class="text-gray-500 text-lg">✅ No prerequisites required for this course</p>
+					<p class="text-gray-400 text-sm mt-2">You can enroll directly!</p>
+				</div>
 			{/if}
+		</div>
+		
+		<!-- Legend -->
+		<div class="mt-4 p-4 bg-gray-100 rounded-lg">
+			<h4 class="text-sm font-semibold mb-2">Legend</h4>
+			<div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+				<div class="flex items-center gap-2">
+					<span>✅</span>
+					<span>All prerequisites met</span>
+				</div>
+				<div class="flex items-center gap-2">
+					<span>⚠️</span>
+					<span>Partially met</span>
+				</div>
+				<div class="flex items-center gap-2">
+					<span>❌</span>
+					<span>Not met</span>
+				</div>
+			</div>
 		</div>
 	</div>
 {/if}
-
-

@@ -1,9 +1,12 @@
 <script lang="ts">
 	import CoursePrerequisiteTree from '$lib/components/CoursePrerequisiteTree.svelte';
+	import CourseSearch from '$lib/components/CourseSearch.svelte';
 	
-	// Mock course data
-	let selectedCourse = $state<string | null>(null);
-	let searchQuery = $state('');
+	let selectedCourseCode = $state<string | null>(null);
+	
+	function handleCourseSelect(courseCode: string | null) {
+		selectedCourseCode = courseCode;
+	}
 </script>
 
 <svelte:head>
@@ -12,40 +15,32 @@
 
 <div class="space-y-6">
 	<div class="card">
-		<h1 class="text-2xl font-bold mb-4">Course Prerequisite Tree</h1>
+		<h1 class="text-2xl font-bold mb-6">Course Prerequisite Tree</h1>
 		
-		<div class="mb-4">
-			<label for="course-search" class="block text-sm font-medium text-gray-700 mb-2">
-				Search for a course
-			</label>
-			<input
-				id="course-search"
-				type="text"
-				bind:value={searchQuery}
-				placeholder="Enter course code (e.g., COMP1111) or name"
-				class="input"
-			/>
-		</div>
+		<p class="text-gray-600 mb-6">
+			Search for a course to view its complete prerequisite tree with real-time eligibility checking.
+		</p>
 		
-		{#if searchQuery && !selectedCourse}
-			<div class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-				<p class="text-sm text-gray-600">
-					Search results would appear here. Click on a course to view its prerequisite tree.
-				</p>
-			</div>
-		{/if}
-		
-		{#if selectedCourse}
-			<CoursePrerequisiteTree courseCode={selectedCourse} />
-		{:else}
-			<div class="mt-8 text-center py-12 bg-gray-50 rounded-lg">
-				<p class="text-gray-600 mb-4">Search for a course to view its prerequisite tree</p>
-				<p class="text-sm text-gray-500">
-					This feature will show all course prerequisites in an interactive tree format
-				</p>
-			</div>
-		{/if}
+		<!-- Course Search -->
+		<CourseSearch onSelect={handleCourseSelect} selectedCourse={selectedCourseCode} />
 	</div>
+	
+	<!-- Prerequisite Tree Display -->
+	{#if selectedCourseCode}
+		<div class="card">
+			<CoursePrerequisiteTree courseCode={selectedCourseCode} />
+		</div>
+	{:else}
+		<div class="card">
+			<div class="text-center py-12">
+				<div class="text-6xl mb-4">🌳</div>
+				<p class="text-gray-600 text-lg mb-2">No course selected</p>
+				<p class="text-sm text-gray-500">
+					Search for a course above or click one of the example courses to view its prerequisite tree
+				</p>
+			</div>
+		</div>
+	{/if}
 </div>
 
 
