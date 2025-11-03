@@ -25,13 +25,18 @@
 				showNotifications = false;
 			}
 		}}
+		onkeydown={(e) => {
+			if (e.key === 'Escape') {
+				showNotifications = false;
+			}
+		}}
 		role="dialog"
 		aria-modal="true"
 		aria-label="Notifications"
+		tabindex="-1"
 	>
 		<div
 			class="bg-white w-full max-w-md h-full shadow-xl overflow-y-auto"
-			onclick={(e) => e.stopPropagation()}
 		>
 			<div class="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
 				<h2 class="text-xl font-bold">Notifications</h2>
