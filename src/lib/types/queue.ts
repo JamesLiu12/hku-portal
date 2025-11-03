@@ -40,10 +40,10 @@ export interface MTRExit {
 
 export interface MTRExitStatus {
 	exitId: string;
+	estimatedQueueTime: number; // in minutes
 	crowdDensity: 'low' | 'medium' | 'high';
-	elevatorAvailable: boolean;
-	escalatorAvailable: boolean;
 	lastUpdated: Date;
+	dataPoints: number; // number of recent submissions
 }
 
 
