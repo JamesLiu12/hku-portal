@@ -72,18 +72,18 @@ export const mockBuildings: Building[] = [
 	
 	// Dining
 	{
-		id: 'union-restaurant',
-		code: 'UR',
-		name: 'Union Restaurant',
+		id: 'canteen-1',
+		code: 'SU',
+		name: 'Student Union Restaurant',
 		type: 'dining',
 		coordinates: { x: 45, y: 55 },
 		description: 'Main student canteen with variety of cuisines',
 		facilities: ['Various Cuisines', 'Halal Options', 'Vegetarian Options'],
 		operatingHours: 'Mon-Fri: 7:00 AM - 8:00 PM, Sat-Sun: 8:00 AM - 7:00 PM',
-		popularNames: ['Main Canteen', 'Student Canteen', 'Union Restaurant']
+		popularNames: ['Main Canteen', 'Student Canteen', 'Student Union Restaurant']
 	},
 	{
-		id: 'coffee-academics',
+		id: 'canteen-2',
 		code: 'CA',
 		name: 'Coffee Academics',
 		type: 'dining',

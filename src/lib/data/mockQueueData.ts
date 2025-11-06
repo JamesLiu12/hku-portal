@@ -7,28 +7,28 @@ import type { Canteen, QueueStatus, MTRExit, MTRExitStatus } from '$lib/types/qu
 export const mockCanteens: Canteen[] = [
 	{
 		id: 'canteen-1',
-		name: 'Main Campus Canteen',
-		nameZh: '主校園餐廳',
-		building: 'Main Building',
+		name: 'Student Union Canteen',
+		nameZh: '學生會餐廳',
+		building: 'Composite Building',
 		location: 'Main Campus',
-		coordinates: { lat: 22.2839, lng: 114.1378 },
+		coordinates: { lat: 22.2845, lng: 114.1382 },
 		operatingHours: {
-			monday: { open: '07:00', close: '20:00' },
-			tuesday: { open: '07:00', close: '20:00' },
-			wednesday: { open: '07:00', close: '20:00' },
-			thursday: { open: '07:00', close: '20:00' },
-			friday: { open: '07:00', close: '20:00' },
-			saturday: { open: '08:00', close: '19:00' },
-			sunday: { open: '08:00', close: '19:00' }
+			monday: { open: '08:00', close: '21:00' },
+			tuesday: { open: '08:00', close: '21:00' },
+			wednesday: { open: '08:00', close: '21:00' },
+			thursday: { open: '08:00', close: '21:00' },
+			friday: { open: '08:00', close: '21:00' },
+			saturday: { open: '09:00', close: '20:00' },
+			sunday: { open: '09:00', close: '20:00' }
 		},
-		cuisines: ['Chinese', 'Western', 'Japanese', 'Korean'],
-		dietaryOptions: ['vegetarian', 'halal']
+		cuisines: ['Chinese', 'Taiwanese', 'Hong Kong Style'],
+		dietaryOptions: ['vegetarian']
 	},
 	{
 		id: 'canteen-2',
-		name: 'Coffee Shop',
+		name: 'Coffee Academics',
 		nameZh: '咖啡店',
-		building: 'Main Building',
+		building: 'Main Library',
 		location: 'Main Campus',
 		coordinates: { lat: 22.2841, lng: 114.1380 },
 		operatingHours: {
@@ -45,28 +45,9 @@ export const mockCanteens: Canteen[] = [
 	},
 	{
 		id: 'canteen-3',
-		name: 'Student Union Canteen',
-		nameZh: '學生會餐廳',
-		building: 'Student Centre',
-		location: 'Main Campus',
-		coordinates: { lat: 22.2845, lng: 114.1382 },
-		operatingHours: {
-			monday: { open: '08:00', close: '21:00' },
-			tuesday: { open: '08:00', close: '21:00' },
-			wednesday: { open: '08:00', close: '21:00' },
-			thursday: { open: '08:00', close: '21:00' },
-			friday: { open: '08:00', close: '21:00' },
-			saturday: { open: '09:00', close: '20:00' },
-			sunday: { open: '09:00', close: '20:00' }
-		},
-		cuisines: ['Chinese', 'Taiwanese', 'Hong Kong Style'],
-		dietaryOptions: ['vegetarian']
-	},
-	{
-		id: 'canteen-4',
-		name: 'Library Cafe',
-		nameZh: '圖書館咖啡廳',
-		building: 'Main Library',
+		name: 'Starbucks',
+		nameZh: '星巴克',
+		building: 'Composite Building',
 		location: 'Main Campus',
 		coordinates: { lat: 22.2848, lng: 114.1385 },
 		operatingHours: {
