@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { searchBuildings, getBuildingByCode, type Building } from '$lib/data/mockBuildings';
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
+	import { browser } from '$app/environment';
 	
 	let { searchQuery = $bindable('') } = $props<{ searchQuery?: string }>();
 	
@@ -9,13 +10,104 @@
 	let toBuilding = $state<Building | null>(null);
 	let directions = $state<{ distance: number; time: number; steps: string[] } | null>(null);
 	let mapContainer: HTMLDivElement;
+	let mapImage: HTMLImageElement;
 	let hoveredBuilding = $state<Building | null>(null);
+	
+	// Map image dimensions and positioning
+	let mapImageRect = $state<{ x: number; y: number; width: number; height: number } | null>(null);
 	
 	const searchResults = $derived.by(() => searchQuery ? searchBuildings(searchQuery) : []);
 	
 	// Mock all buildings for map display
 	import { mockBuildings } from '$lib/data/mockBuildings';
 	const allBuildings = mockBuildings;
+	
+	// Calculate the actual rendered size and position of the map image
+	function updateMapImageRect() {
+		if (!browser || !mapContainer || !mapImage) return;
+		
+		const containerRect = mapContainer.getBoundingClientRect();
+		const containerWidth = containerRect.width;
+		const containerHeight = containerRect.height;
+		
+		// Get natural image dimensions
+		const naturalWidth = mapImage.naturalWidth;
+		const naturalHeight = mapImage.naturalHeight;
+		
+		if (naturalWidth === 0 || naturalHeight === 0) return;
+		
+		// Calculate scale to fit (object-contain behavior)
+		const scaleX = containerWidth / naturalWidth;
+		const scaleY = containerHeight / naturalHeight;
+		const scale = Math.min(scaleX, scaleY);
+		
+		// Calculate actual rendered dimensions
+		const renderedWidth = naturalWidth * scale;
+		const renderedHeight = naturalHeight * scale;
+		
+		// Calculate centering offset
+		const offsetX = (containerWidth - renderedWidth) / 2;
+		const offsetY = (containerHeight - renderedHeight) / 2;
+		
+		mapImageRect = {
+			x: offsetX,
+			y: offsetY,
+			width: renderedWidth,
+			height: renderedHeight
+		};
+	}
+	
+	// Convert percentage coordinates to pixel positions relative to container
+	function getPixelPosition(building: Building): { x: number; y: number } | null {
+		if (!mapImageRect) return null;
+		
+		return {
+			x: mapImageRect.x + (building.coordinates.x / 100) * mapImageRect.width,
+			y: mapImageRect.y + (building.coordinates.y / 100) * mapImageRect.height
+		};
+	}
+	
+	// Handle window resize
+	let resizeObserver: ResizeObserver;
+	
+	onMount(async () => {
+		if (!browser) return;
+		
+		// Wait for next tick to ensure bindings are set
+		await new Promise(resolve => setTimeout(resolve, 0));
+		
+		// Wait for image to load
+		if (mapImage) {
+			if (mapImage.complete && mapImage.naturalWidth > 0) {
+				updateMapImageRect();
+			} else {
+				mapImage.addEventListener('load', updateMapImageRect, { once: true });
+			}
+		}
+		
+		// Observe container resize
+		if (mapContainer) {
+			resizeObserver = new ResizeObserver(() => {
+				updateMapImageRect();
+			});
+			resizeObserver.observe(mapContainer);
+		}
+		
+		// Also listen to window resize as fallback
+		window.addEventListener('resize', updateMapImageRect);
+	});
+	
+	onDestroy(() => {
+		if (!browser) return;
+		
+		if (resizeObserver) {
+			resizeObserver.disconnect();
+		}
+		window.removeEventListener('resize', updateMapImageRect);
+		if (mapImage) {
+			mapImage.removeEventListener('load', updateMapImageRect);
+		}
+	});
 	
 	function selectBuilding(building: Building) {
 		selectedBuilding = building;
@@ -116,15 +208,14 @@
 			bind:this={mapContainer}
 			class="w-full h-full relative"
 		>
-			<!-- Background grid (optional, for visual reference) -->
-			<svg class="absolute inset-0 w-full h-full" style="opacity: 0.1;">
-				<defs>
-					<pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse">
-						<path d="M 50 0 L 0 0 0 50" fill="none" stroke="#888" stroke-width="1"/>
-					</pattern>
-				</defs>
-				<rect width="100%" height="100%" fill="url(#grid)" />
-			</svg>
+			<!-- HKU Map Background -->
+			<img 
+				bind:this={mapImage}
+				src="/assets/hku-map.png" 
+				alt="HKU Campus Map" 
+				class="absolute inset-0 w-full h-full object-contain"
+				style="background-color: #f9fafb;"
+			/>
 			
 			<!-- Buildings as points on map -->
 			{#each allBuildings as building}
@@ -132,51 +223,58 @@
 				{@const isHovered = hoveredBuilding?.id === building.id}
 				{@const isFrom = fromBuilding?.id === building.id}
 				{@const isTo = toBuilding?.id === building.id}
-				<button
-					type="button"
-					class="absolute transition-all duration-200 {getBuildingTypeColor(building.type)} 
-						rounded-full shadow-lg hover:shadow-xl hover:scale-125 
-						{(isSelected || isHovered) ? 'ring-4 ring-yellow-400 ring-opacity-50 z-30' : 'z-10'}
-						{(isFrom || isTo) ? 'ring-4 ring-blue-400 ring-opacity-50' : ''}"
-					style="left: {building.coordinates.x}%; top: {building.coordinates.y}%; transform: translate(-50%, -50%); width: {(isSelected || isHovered) ? '24px' : '16px'}; height: {(isSelected || isHovered) ? '24px' : '16px'};"
-					onclick={() => selectBuilding(building)}
-					onmouseenter={() => hoveredBuilding = building}
-					onmouseleave={() => hoveredBuilding = null}
-					title="{building.name} ({building.code})"
-				>
-				</button>
-				
-				<!-- Building label (show on hover or select) -->
-				{#if isSelected || isHovered}
-					<div
-						class="absolute bg-white border border-gray-300 rounded-lg shadow-lg px-2 py-1 text-xs z-40 pointer-events-none whitespace-nowrap"
-						style="left: {building.coordinates.x}%; top: {building.coordinates.y - 5}%; transform: translate(-50%, -100%);"
+				{@const pos = getPixelPosition(building)}
+				{#if pos}
+					<button
+						type="button"
+						class="absolute transition-all duration-200 {getBuildingTypeColor(building.type)} 
+							rounded-full shadow-lg hover:shadow-xl hover:scale-125 
+							{(isSelected || isHovered) ? 'ring-4 ring-yellow-400 ring-opacity-50 z-30' : 'z-10'}
+							{(isFrom || isTo) ? 'ring-4 ring-blue-400 ring-opacity-50' : ''}"
+						style="left: {pos.x}px; top: {pos.y}px; transform: translate(-50%, -50%); width: {(isSelected || isHovered) ? '24px' : '16px'}; height: {(isSelected || isHovered) ? '24px' : '16px'};"
+						onclick={() => selectBuilding(building)}
+						onmouseenter={() => hoveredBuilding = building}
+						onmouseleave={() => hoveredBuilding = null}
+						title="{building.name} ({building.code})"
 					>
-						<div class="font-semibold text-gray-900">{building.code}</div>
-						<div class="text-gray-600">{building.name}</div>
-					</div>
+					</button>
+					
+					<!-- Building label (show on hover or select) -->
+					{#if isSelected || isHovered}
+						<div
+							class="absolute bg-white border border-gray-300 rounded-lg shadow-lg px-2 py-1 text-xs z-40 pointer-events-none whitespace-nowrap"
+							style="left: {pos.x}px; top: {pos.y - 20}px; transform: translate(-50%, -100%);"
+						>
+							<div class="font-semibold text-gray-900">{building.code}</div>
+							<div class="text-gray-600">{building.name}</div>
+						</div>
+					{/if}
 				{/if}
 			{/each}
 			
 			<!-- Direction line -->
-			{#if fromBuilding && toBuilding}
-				<svg class="absolute inset-0 w-full h-full pointer-events-none z-5">
-					<line
-						x1="{fromBuilding.coordinates.x}%"
-						y1="{fromBuilding.coordinates.y}%"
-						x2="{toBuilding.coordinates.x}%"
-						y2="{toBuilding.coordinates.y}%"
-						stroke="#3b82f6"
-						stroke-width="3"
-						stroke-dasharray="5,5"
-						marker-end="url(#arrowhead)"
-					/>
-					<defs>
-						<marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
-							<polygon points="0 0, 10 3, 0 6" fill="#3b82f6" />
-						</marker>
-					</defs>
-				</svg>
+			{#if fromBuilding && toBuilding && mapImageRect}
+				{@const fromPos = getPixelPosition(fromBuilding)}
+				{@const toPos = getPixelPosition(toBuilding)}
+				{#if fromPos && toPos}
+					<svg class="absolute inset-0 w-full h-full pointer-events-none z-5">
+						<line
+							x1="{fromPos.x}"
+							y1="{fromPos.y}"
+							x2="{toPos.x}"
+							y2="{toPos.y}"
+							stroke="#3b82f6"
+							stroke-width="3"
+							stroke-dasharray="5,5"
+							marker-end="url(#arrowhead)"
+						/>
+						<defs>
+							<marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+								<polygon points="0 0, 10 3, 0 6" fill="#3b82f6" />
+							</marker>
+						</defs>
+					</svg>
+				{/if}
 			{/if}
 			
 			<!-- Legend -->

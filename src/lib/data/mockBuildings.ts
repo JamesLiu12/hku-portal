@@ -21,7 +21,7 @@ export const mockBuildings: Building[] = [
 		code: 'KK',
 		name: 'K.K. Leung Building',
 		type: 'academic',
-		coordinates: { x: 45, y: 35 },
+		coordinates: { x: 82, y: 50 },
 		description: 'Main academic building housing lecture theatres and classrooms',
 		facilities: ['Lecture Theatres', 'Classrooms', 'Computer Labs'],
 		popularNames: ['Leung Building', 'K.K. Leung']
@@ -31,7 +31,7 @@ export const mockBuildings: Building[] = [
 		code: 'MB',
 		name: 'Main Building',
 		type: 'academic',
-		coordinates: { x: 55, y: 40 },
+		coordinates: { x: 65, y: 25},
 		description: 'Historic main building with administrative offices and lecture halls',
 		facilities: ['Lecture Theatres', 'Administrative Offices', 'Grand Hall'],
 		popularNames: ['Main Building', 'Central Building']
@@ -41,7 +41,7 @@ export const mockBuildings: Building[] = [
 		code: 'CB',
 		name: 'Chow Yei Ching Building',
 		type: 'academic',
-		coordinates: { x: 40, y: 45 },
+		coordinates: { x: 30, y: 48 },
 		description: 'Engineering and computer science facilities',
 		facilities: ['Computer Labs', 'Engineering Labs', 'Classrooms'],
 		popularNames: ['Engineering Building', 'CYC Building']
@@ -51,9 +51,9 @@ export const mockBuildings: Building[] = [
 		code: 'RR',
 		name: 'Run Run Shaw Building',
 		type: 'academic',
-		coordinates: { x: 50, y: 30 },
+		coordinates: { x: 78, y: 73 },
 		description: 'Social sciences and humanities building',
-		facilities: ['Lecture Theatres', 'Seminar Rooms', 'Faculty Offices'],
+		facilities: ['Lecture Theatres', 'Seminar Rooms', 'Faculty Offices', 'Academic Services Office'],
 		popularNames: ['RR Shaw', 'Shaw Building']
 	},
 	
@@ -72,63 +72,49 @@ export const mockBuildings: Building[] = [
 	
 	// Dining
 	{
-		id: 'canteen-1',
-		code: 'C1',
-		name: 'Main Campus Canteen',
+		id: 'union-restaurant',
+		code: 'UR',
+		name: 'Union Restaurant',
 		type: 'dining',
-		coordinates: { x: 55, y: 55 },
+		coordinates: { x: 45, y: 55 },
 		description: 'Main student canteen with variety of cuisines',
 		facilities: ['Various Cuisines', 'Halal Options', 'Vegetarian Options'],
 		operatingHours: 'Mon-Fri: 7:00 AM - 8:00 PM, Sat-Sun: 8:00 AM - 7:00 PM',
-		popularNames: ['Main Canteen', 'Student Canteen']
+		popularNames: ['Main Canteen', 'Student Canteen', 'Union Restaurant']
 	},
 	{
-		id: 'canteen-2',
-		code: 'C2',
-		name: 'Coffee Shop',
+		id: 'coffee-academics',
+		code: 'CA',
+		name: 'Coffee Academics',
 		type: 'dining',
-		coordinates: { x: 50, y: 50 },
+		coordinates: { x: 70, y: 58 },
 		description: 'Coffee shop and light snacks',
 		facilities: ['Coffee', 'Sandwiches', 'Pastries'],
 		operatingHours: 'Mon-Fri: 8:00 AM - 6:00 PM',
-		popularNames: ['Cafe', 'Coffee House']
+		popularNames: ['Cafe', 'Coffee House', 'Coffee Academics']
 	},
 	
-	// Administrative
+	// MTR C1 Exit
 	{
-		id: 'student-center',
-		code: 'SC',
-		name: 'Student Centre',
-		type: 'administrative',
-		coordinates: { x: 65, y: 45 },
-		description: 'Student services and support center',
-		facilities: ['Student Services', 'Career Center', 'Counseling Services', 'Printing'],
-		operatingHours: 'Mon-Fri: 9:00 AM - 5:30 PM',
-		popularNames: ['Student Services', 'SC']
-	},
-	
-	// Sports
-	{
-		id: 'sports-center',
-		code: 'SP',
-		name: 'Sports Centre',
-		type: 'sports',
-		coordinates: { x: 35, y: 55 },
-		description: 'Indoor sports facilities and gym',
-		facilities: ['Gym', 'Basketball Court', 'Badminton Court', 'Fitness Classes'],
-		operatingHours: 'Mon-Sun: 7:00 AM - 10:00 PM',
-		popularNames: ['Gym', 'Sports Hall']
-	},
-	
-	// MTR Exit
-	{
-		id: 'mtr-exit',
-		code: 'MTR',
-		name: 'MTR Station Exit',
+		id: 'mtr-c1-exit',
+		code: 'C1',
+		name: 'MTR C1 Exit',
 		type: 'other',
-		coordinates: { x: 70, y: 60 },
-		description: 'Main MTR station exit to campus',
-		popularNames: ['MTR', 'Station', 'Metro']
+		coordinates: { x: 18, y: 11 },
+		description: 'HKU Station C1 Exit',
+		facilities: ['Exit', 'Stairs', 'Elevator', 'Escalator'],
+		popularNames: ['C1', 'Exit', 'MTR', 'Station', 'Metro']
+	},
+	
+	// MTR A1/A2 Exit
+	{
+		id: 'mtr-a1a2-exit',
+		code: 'MTR',
+		name: 'MTR A1/A2 Exit',
+		type: 'other',
+		coordinates: { x: 49, y: 45 },
+		description: 'HKU Station A1 Exit',
+		popularNames: ['A1', 'Exit', 'MTR', 'Station', 'Metro']
 	}
 ];
 
