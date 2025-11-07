@@ -25,133 +25,195 @@
 		}
 	}
 	
-	// Calculate positions for nodes (simple horizontal layout)
-	const nodeWidth = 180;
-	const nodeHeight = 100;
-	const horizontalSpacing = 40;
-	const verticalSpacing = 100;
+// Calculate positions for nodes (simple horizontal layout)
+const nodeWidth = 180;
+const nodeHeight = 100;
+const horizontalSpacing = 40;
+const verticalSpacing = 120;
+const horizontalPadding = 32;
+const verticalPadding = 32;
 	
-	function calculateLayout() {
-		const levels: Array<Array<{ code: string; name: string; status: string; x: number; y: number; hasChildren: boolean }>> = [];
-		
-		if (!tree || !tree.prerequisites || tree.prerequisites.length === 0) {
-			return levels;
-		}
-		
-		// Level 0: Root node
-		levels.push([{
+type LayoutNode = {
+	code: string;
+	name: string;
+	status: string;
+	x: number;
+	y: number;
+	hasChildren: boolean;
+	parentIndex?: number;
+};
+
+function calculateLayout(): { levels: LayoutNode[][]; width: number; height: number } {
+	const levels: LayoutNode[][] = [];
+
+	if (!tree || !tree.prerequisites || tree.prerequisites.length === 0) {
+		return {
+			levels,
+			width: nodeWidth + horizontalPadding * 2,
+			height: nodeHeight + verticalPadding * 2
+		};
+	}
+
+	// Level 0: Root node
+	const rootY = 0;
+	levels.push([
+		{
 			code: tree.courseCode,
 			name: tree.courseName,
 			status: tree.status,
-			x: 600,
-			y: 50,
+			x: 0,
+			y: rootY,
 			hasChildren: tree.prerequisites && tree.prerequisites.length > 0
-		}]);
-		
-		// Level 1: Direct prerequisites
-		if (tree.prerequisites && tree.prerequisites.length > 0) {
-			const level1Nodes = [];
-			const totalWidth = tree.prerequisites.length * nodeWidth + (tree.prerequisites.length - 1) * horizontalSpacing;
-			const startX = 600 - totalWidth / 2 + nodeWidth / 2;
-			
-			tree.prerequisites.forEach((prereq, index) => {
-				level1Nodes.push({
-					code: prereq.code,
-					name: prereq.name,
-					status: prereq.status,
-					x: startX + index * (nodeWidth + horizontalSpacing),
-					y: 200,
-					hasChildren: prereq.prerequisites && prereq.prerequisites.length > 0
-				});
+		}
+	]);
+
+	// Level 1: Direct prerequisites
+	if (tree.prerequisites && tree.prerequisites.length > 0) {
+		const level1Nodes: LayoutNode[] = [];
+		const totalWidth =
+			tree.prerequisites.length * nodeWidth +
+			(tree.prerequisites.length - 1) * horizontalSpacing;
+		const startX = -totalWidth / 2 + nodeWidth / 2;
+		const level1Y = rootY + nodeHeight + verticalSpacing;
+
+		tree.prerequisites.forEach((prereq, index) => {
+			level1Nodes.push({
+				code: prereq.code,
+				name: prereq.name,
+				status: prereq.status,
+				x: startX + index * (nodeWidth + horizontalSpacing),
+				y: level1Y,
+				hasChildren: prereq.prerequisites && prereq.prerequisites.length > 0,
+				parentIndex: index
 			});
-			levels.push(level1Nodes);
-			
-			// Level 2: Prerequisites of prerequisites
-			const level2Nodes: Array<{ code: string; name: string; status: string; x: number; y: number; hasChildren: boolean; parentIndex: number }> = [];
-			
-			tree.prerequisites.forEach((prereq, parentIndex) => {
-				if (prereq.prerequisites && prereq.prerequisites.length > 0) {
-					const parentX = level1Nodes[parentIndex].x;
-					const childrenTotalWidth = prereq.prerequisites.length * nodeWidth + (prereq.prerequisites.length - 1) * horizontalSpacing;
-					const childrenStartX = parentX - childrenTotalWidth / 2 + nodeWidth / 2;
-					
-					prereq.prerequisites.forEach((child, childIndex) => {
-						level2Nodes.push({
-							code: child.code,
-							name: child.name,
-							status: child.status,
-							x: childrenStartX + childIndex * (nodeWidth + horizontalSpacing),
-							y: 350,
-							hasChildren: false,
-							parentIndex
-						});
+		});
+		levels.push(level1Nodes);
+
+		// Level 2: Prerequisites of prerequisites
+		const level2Nodes: LayoutNode[] = [];
+
+		tree.prerequisites.forEach((prereq, parentIndex) => {
+			if (prereq.prerequisites && prereq.prerequisites.length > 0) {
+				const parentX = level1Nodes[parentIndex].x;
+				const childrenTotalWidth =
+					prereq.prerequisites.length * nodeWidth +
+					(prereq.prerequisites.length - 1) * horizontalSpacing;
+				const childrenStartX = parentX - childrenTotalWidth / 2 + nodeWidth / 2;
+				const level2Y = level1Y + nodeHeight + verticalSpacing;
+
+				prereq.prerequisites.forEach((child, childIndex) => {
+					level2Nodes.push({
+						code: child.code,
+						name: child.name,
+						status: child.status,
+						x: childrenStartX + childIndex * (nodeWidth + horizontalSpacing),
+						y: level2Y,
+						hasChildren: false,
+						parentIndex
 					});
-				}
-			});
-			
-			if (level2Nodes.length > 0) {
-				levels.push(level2Nodes);
+				});
 			}
+		});
+
+		if (level2Nodes.length > 0) {
+			levels.push(level2Nodes);
 		}
-		
-		return levels;
 	}
-	
-	const levels = $derived.by(() => calculateLayout());
-	const maxY = $derived.by(() => {
-		if (levels.length === 0) return 200;
-		const allYs = levels.flatMap(l => l.map(n => n.y));
-		if (allYs.length === 0) return 200;
-		return Math.max(...allYs) + nodeHeight + 50;
+
+	let minLeft = Infinity;
+	let maxRight = -Infinity;
+	let minY = Infinity;
+	let maxY = -Infinity;
+
+	levels.forEach(level => {
+		level.forEach(node => {
+			const left = node.x - nodeWidth / 2;
+			const right = node.x + nodeWidth / 2;
+			minLeft = Math.min(minLeft, left);
+			maxRight = Math.max(maxRight, right);
+			minY = Math.min(minY, node.y);
+			maxY = Math.max(maxY, node.y + nodeHeight);
+		});
 	});
-	const svgWidth = 1200;
-	const svgHeight = maxY;
-	
-	function getEdges() {
-		const edges: Array<{ x1: number; y1: number; x2: number; y2: number }> = [];
-		
-		if (!tree || !tree.prerequisites || levels.length < 2) {
-			return edges;
-		}
-		
-		// Edges from root to level 1
-		const root = levels[0][0];
-		if (levels[1]) {
-			levels[1].forEach(node => {
-				edges.push({
-					x1: root.x,
-					y1: root.y + nodeHeight,
-					x2: node.x,
-					y2: node.y
-				});
-			});
-		}
-		
-		// Edges from level 1 to level 2
-		if (levels.length > 2 && tree.prerequisites && levels[1] && levels[2]) {
-			levels[2].forEach((childNode: typeof levels[2][0] & { parentIndex?: number }) => {
-				if (childNode.parentIndex !== undefined && levels[1][childNode.parentIndex]) {
-					const parentNode = levels[1][childNode.parentIndex];
-					edges.push({
-						x1: parentNode.x,
-						y1: parentNode.y + nodeHeight,
-						x2: childNode.x,
-						y2: childNode.y
-					});
-				}
-			});
-		}
-		
+
+	if (!Number.isFinite(minLeft) || !Number.isFinite(maxRight)) {
+		return {
+			levels,
+			width: nodeWidth + horizontalPadding * 2,
+			height: nodeHeight + verticalPadding * 2
+		};
+	}
+
+	const shiftX = horizontalPadding - minLeft;
+	const shiftY = verticalPadding - minY;
+
+	levels.forEach(level => {
+		level.forEach(node => {
+			node.x += shiftX;
+			node.y += shiftY;
+		});
+	});
+
+	const width = maxRight - minLeft + horizontalPadding * 2;
+	const height = maxY - minY + verticalPadding * 2;
+
+	return { levels, width, height };
+}
+
+const layout = $derived.by(() => calculateLayout());
+const levels = $derived.by(() => layout.levels);
+const svgWidth = $derived.by(() => layout.width);
+const svgHeight = $derived.by(() => layout.height);
+
+function getEdges(levelData: LayoutNode[][]) {
+	const edges: Array<{ x1: number; y1: number; x2: number; y2: number }> = [];
+
+	if (!tree || !tree.prerequisites || levelData.length < 2) {
 		return edges;
 	}
-	
-	const edges = $derived.by(() => getEdges());
+
+	// Edges from root to level 1
+	const root = levelData[0][0];
+	if (levelData[1]) {
+		levelData[1].forEach(node => {
+			edges.push({
+				x1: root.x,
+				y1: root.y + nodeHeight,
+				x2: node.x,
+				y2: node.y
+			});
+		});
+	}
+
+	// Edges from level 1 to level 2
+	if (levelData.length > 2 && tree.prerequisites && levelData[1] && levelData[2]) {
+		levelData[2].forEach(childNode => {
+			if (childNode.parentIndex !== undefined && levelData[1][childNode.parentIndex]) {
+				const parentNode = levelData[1][childNode.parentIndex];
+				edges.push({
+					x1: parentNode.x,
+					y1: parentNode.y + nodeHeight,
+					x2: childNode.x,
+					y2: childNode.y
+				});
+			}
+		});
+	}
+
+	return edges;
+}
+
+const edges = $derived.by(() => getEdges(levels));
 </script>
 
 {#if tree && tree.prerequisites && Array.isArray(tree.prerequisites) && tree.prerequisites.length > 0}
-	<div class="w-full overflow-auto bg-white rounded-lg border border-gray-200 p-6">
-		<div class="min-w-full" style="min-width: {svgWidth}px;">
-			<svg width={svgWidth} height={svgHeight} viewBox="0 0 {svgWidth} {svgHeight}" class="w-full">
+    <div class="w-full overflow-x-auto overflow-y-hidden bg-white rounded-lg border border-gray-200 p-6 touch-pan-x">
+        <div class="mx-auto" style="max-width: {svgWidth}px;">
+            <svg
+                class="w-full h-auto"
+                viewBox="0 0 {svgWidth} {svgHeight}"
+                preserveAspectRatio="xMidYMin meet"
+            >
 			<!-- Arrow marker definition -->
 			<defs>
 				<marker

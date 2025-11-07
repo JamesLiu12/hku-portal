@@ -109,7 +109,7 @@ export const mockBuildings: Building[] = [
 	// MTR A1/A2 Exit
 	{
 		id: 'mtr-a1a2-exit',
-		code: 'MTR',
+		code: 'A1A2',
 		name: 'MTR A1/A2 Exit',
 		type: 'other',
 		coordinates: { x: 49, y: 45 },
