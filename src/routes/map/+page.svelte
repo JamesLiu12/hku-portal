@@ -5,7 +5,7 @@
 </script>
 
 <svelte:head>
-	<title>Campus Map - HKU Portal</title>
+	<title>Campus Map - Helper</title>
 </svelte:head>
 
 <div class="space-y-6">

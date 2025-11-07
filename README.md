@@ -1,6 +1,6 @@
-# HKU Portal - Modern Student Portal
+# HKU Helper - Modern Student Portal
 
-A modern, user-friendly redesign of the HKU Portal addressing key pain points in course registration, navigation, and campus services.
+A modern, user-friendly redesign of the HKU Helper addressing key pain points in course registration, navigation, and campus services.
 
 ## Features
 

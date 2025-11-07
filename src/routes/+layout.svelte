@@ -9,8 +9,8 @@
 </script>
 
 <svelte:head>
-	<title>HKU Portal</title>
-	<meta name="description" content="Modern HKU Portal - Your gateway to campus life" />
+	<title>HKU Helper</title>
+	<meta name="description" content="Modern HKU Helper - Your gateway to campus life" />
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50">

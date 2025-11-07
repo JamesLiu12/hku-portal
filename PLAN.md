@@ -1,7 +1,7 @@
-# HKU Portal Redesign - Comprehensive Plan
+# HKU Helper Redesign - Comprehensive Plan
 
 ## Overview
-A modern, user-friendly redesign of the HKU Portal addressing key pain points in course registration, navigation, and campus services. Built with SvelteKit for a responsive, fast, and intuitive experience.
+A modern, user-friendly redesign of the HKU Helper addressing key pain points in course registration, navigation, and campus services. Built with SvelteKit for a responsive, fast, and intuitive experience.
 
 ## Core Features
 

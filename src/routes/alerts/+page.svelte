@@ -53,7 +53,7 @@
 </script>
 
 <svelte:head>
-	<title>Alerts - HKU Portal</title>
+	<title>Alerts - HKU Helper</title>
 </svelte:head>
 
 <div class="space-y-6">

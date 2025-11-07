@@ -10,7 +10,7 @@
 </script>
 
 <svelte:head>
-	<title>Course Prerequisites - HKU Portal</title>
+	<title>Course Prerequisites - HKU Helper</title>
 </svelte:head>
 
 <div class="space-y-6">

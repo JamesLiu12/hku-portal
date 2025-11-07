@@ -23,7 +23,7 @@
 			<!-- Logo and Title -->
 			<div class="flex items-center space-x-4">
 				<div class="text-2xl font-bold text-[var(--hku-green)]">
-					HKU Portal
+					HKU Helper
 				</div>
 				<div class="text-sm text-gray-600">
 					The University of Hong Kong

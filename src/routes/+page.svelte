@@ -10,13 +10,13 @@
 </script>
 
 <svelte:head>
-	<title>HKU Portal - Home</title>
+	<title>HKU Helper - Home</title>
 </svelte:head>
 
 <div class="space-y-6">
 	<!-- Welcome Section -->
 	<div class="card">
-		<h1 class="text-3xl font-bold text-gray-900 mb-2">Welcome to HKU Portal</h1>
+		<h1 class="text-3xl font-bold text-gray-900 mb-2">Welcome to HKU Helper</h1>
 		<p class="text-gray-600">Your modern gateway to campus life and academic management</p>
 	</div>
 	

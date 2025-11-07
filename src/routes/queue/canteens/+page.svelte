@@ -3,7 +3,7 @@
 </script>
 
 <svelte:head>
-	<title>Queue Times - HKU Portal</title>
+	<title>Queue Times - HKU Helper</title>
 </svelte:head>
 
 <div class="space-y-6">

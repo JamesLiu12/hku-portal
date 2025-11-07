@@ -3,7 +3,7 @@
 </script>
 
 <svelte:head>
-	<title>Timetable Builder - HKU Portal</title>
+	<title>Timetable Builder - HKU Helper</title>
 </svelte:head>
 
 <div class="space-y-6">
