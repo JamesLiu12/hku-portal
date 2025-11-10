@@ -21,16 +21,18 @@ export interface Prerequisite {
 	alternatives?: Prerequisite[];
 }
 
+export type ProgressStatus = 'completed' | 'eligible' | 'not-met';
+
 export interface PrerequisiteTree {
 	course: Course;
 	prerequisites: PrerequisiteNode[];
-	status: 'met' | 'partial' | 'not-met';
+	status: ProgressStatus;
 }
 
 export interface PrerequisiteNode {
 	prerequisite: Prerequisite;
 	children?: PrerequisiteNode[];
-	status: 'met' | 'partial' | 'not-met';
+	status: ProgressStatus;
 	completed?: boolean;
 	grade?: string;
 }

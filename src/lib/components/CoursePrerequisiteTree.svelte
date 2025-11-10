@@ -1,9 +1,11 @@
 <script lang="ts">
-	import { getTree } from '$lib/data/mockPrerequisiteTrees';
+	import { getTree, getAvailableCourseCodes } from '$lib/data/mockPrerequisiteTrees';
 	import type { SimpleTree } from '$lib/data/mockPrerequisiteTrees';
 	import PrerequisiteTreeVisualization from './PrerequisiteTreeVisualization.svelte';
 	
 	let { courseCode } = $props<{ courseCode: string }>();
+
+	const availableCourseCodes = getAvailableCourseCodes();
 	
 	let tree = $derived.by(() => {
 		if (!courseCode) return null;
@@ -35,7 +37,7 @@
 {#if loading}
 	<div class="mt-6 flex items-center justify-center py-12">
 		<div class="text-center">
-			<div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--hku-green)] mb-4"></div>
+			<div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-(--hku-green) mb-4"></div>
 			<p class="text-gray-600">Loading prerequisite tree...</p>
 		</div>
 	</div>
@@ -44,7 +46,7 @@
 		<p class="text-red-800 font-semibold">Course Not Found</p>
 		<p class="text-red-600 text-sm mt-1">{error}</p>
 		<p class="text-red-600 text-xs mt-2">
-			Available courses: COMP3111, COMP3001, COMP4001, COMP1111
+			Available courses: {availableCourseCodes.join(', ')}
 		</p>
 	</div>
 {:else if tree}
@@ -56,17 +58,17 @@
 				<p class="text-gray-600 mt-1">{tree.courseName}</p>
 			</div>
 			<div
-				class="px-4 py-2 rounded-lg font-semibold {tree.status === 'met'
+				class="px-4 py-2 rounded-lg font-semibold {tree.status === 'completed'
 					? 'bg-green-100 text-green-800'
-					: tree.status === 'partial'
+					: tree.status === 'eligible'
 						? 'bg-yellow-100 text-yellow-800'
 						: 'bg-red-100 text-red-800'}"
 			>
-				{tree.status === 'met'
-					? '✅ All Prerequisites Met'
-					: tree.status === 'partial'
-						? '⚠️ Partially Met'
-						: '❌ Prerequisites Not Met'}
+				{tree.status === 'completed'
+					? '✅ Course Completed'
+					: tree.status === 'eligible'
+						? '⚑ Eligible to Enroll'
+						: '❌ Requirements Outstanding'}
 			</div>
 		</div>
 		
@@ -89,15 +91,15 @@
 			<div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
 				<div class="flex items-center gap-2">
 					<span>✅</span>
-					<span>All prerequisites met</span>
+					<span>Course completed</span>
 				</div>
 				<div class="flex items-center gap-2">
-					<span>⚠️</span>
-					<span>Partially met</span>
+					<span>⚑</span>
+					<span>Eligible to enroll (requirements satisfied)</span>
 				</div>
 				<div class="flex items-center gap-2">
 					<span>❌</span>
-					<span>Not met</span>
+					<span>Requirements not met</span>
 				</div>
 			</div>
 		</div>

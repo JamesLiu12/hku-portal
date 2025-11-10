@@ -1,293 +1,429 @@
 <script lang="ts">
-	import type { SimpleTree } from '$lib/data/mockPrerequisiteTrees';
-	
+	import type {
+		SimpleTree,
+		PrerequisiteNode,
+		PrerequisiteRelationship,
+		ProgressStatus
+	} from '$lib/data/mockPrerequisiteTrees';
+
 	let { tree } = $props<{ tree: SimpleTree }>();
-	
-	function getStatusColor(status: 'met' | 'partial' | 'not-met'): string {
+
+	const courseNodeWidth = 180;
+	const courseNodeHeight = 100;
+	const groupNodeWidth = 140;
+	const groupNodeHeight = 60;
+	const horizontalSpacing = 48;
+	const verticalSpacing = 140;
+	const horizontalPadding = 48;
+	const verticalPadding = 48;
+
+	type VisualNode = {
+		id: string;
+		type: 'course' | 'group';
+		code?: string;
+		name: string;
+		status?: ProgressStatus;
+		operator?: 'AND' | 'OR';
+		relationship?: PrerequisiteRelationship;
+		x: number;
+		y: number;
+		width: number;
+		height: number;
+		depth: number;
+		isRoot?: boolean;
+	};
+
+	type PendingEdge = {
+		id: string;
+		fromId: string;
+		toId: string;
+		relationship: PrerequisiteRelationship;
+	};
+
+	type VisualEdgeSegment = {
+		id: string;
+		x1: number;
+		y1: number;
+		x2: number;
+		y2: number;
+		relationship: PrerequisiteRelationship;
+	};
+
+	function isGroupNode(node: PrerequisiteNode): node is Extract<PrerequisiteNode, { type: 'group' }> {
+		return node.type === 'group';
+	}
+
+	function getChildren(node: PrerequisiteNode): PrerequisiteNode[] {
+		return isGroupNode(node) ? node.children : node.prerequisites ?? [];
+	}
+
+	function getNodeDimensions(nodeType: 'course' | 'group'): { width: number; height: number } {
+		return nodeType === 'course'
+			? { width: courseNodeWidth, height: courseNodeHeight }
+			: { width: groupNodeWidth, height: groupNodeHeight };
+	}
+
+	function getStatusColor(status: ProgressStatus): string {
 		switch (status) {
-			case 'met':
+			case 'completed':
 				return '#10b981'; // green-500
-			case 'partial':
+			case 'eligible':
 				return '#f59e0b'; // yellow-500
 			case 'not-met':
 				return '#ef4444'; // red-500
 		}
 	}
-	
-	function getStatusIcon(status: 'met' | 'partial' | 'not-met'): string {
+
+	function getStatusIcon(status: ProgressStatus): string {
 		switch (status) {
-			case 'met':
+			case 'completed':
 				return '✓';
-			case 'partial':
-				return '⚠';
+			case 'eligible':
+				return '⚑';
 			case 'not-met':
 				return '✗';
 		}
 	}
-	
-// Calculate positions for nodes (simple horizontal layout)
-const nodeWidth = 180;
-const nodeHeight = 100;
-const horizontalSpacing = 40;
-const verticalSpacing = 120;
-const horizontalPadding = 32;
-const verticalPadding = 32;
-	
-type LayoutNode = {
-	code: string;
-	name: string;
-	status: string;
-	x: number;
-	y: number;
-	hasChildren: boolean;
-	parentIndex?: number;
-};
 
-function calculateLayout(): { levels: LayoutNode[][]; width: number; height: number } {
-	const levels: LayoutNode[][] = [];
-
-	if (!tree || !tree.prerequisites || tree.prerequisites.length === 0) {
-		return {
-			levels,
-			width: nodeWidth + horizontalPadding * 2,
-			height: nodeHeight + verticalPadding * 2
-		};
+	function getStatusLabel(status: ProgressStatus): string {
+		switch (status) {
+			case 'completed':
+				return 'Completed';
+			case 'eligible':
+				return 'Eligible';
+			case 'not-met':
+				return 'Not met';
+		}
 	}
 
-	// Level 0: Root node
-	const rootY = 0;
-	levels.push([
-		{
+	const layout = $derived.by(() => calculateVisuals());
+	const visualNodes = $derived.by(() => layout.nodes);
+	const visualEdges = $derived.by(() => layout.edges);
+	const svgWidth = $derived.by(() => layout.width);
+	const svgHeight = $derived.by(() => layout.height);
+
+	function calculateVisuals(): {
+		nodes: VisualNode[];
+		edges: VisualEdgeSegment[];
+		width: number;
+		height: number;
+	} {
+		if (!tree) {
+			return {
+				nodes: [],
+				edges: [],
+				width: courseNodeWidth + horizontalPadding * 2,
+				height: courseNodeHeight + verticalPadding * 2
+			};
+		}
+
+		const rootNode: PrerequisiteNode = {
+			type: 'course',
 			code: tree.courseCode,
 			name: tree.courseName,
 			status: tree.status,
-			x: 0,
-			y: rootY,
-			hasChildren: tree.prerequisites && tree.prerequisites.length > 0
-		}
-	]);
+			prerequisites: tree.prerequisites ?? []
+		};
 
-	// Level 1: Direct prerequisites
-	if (tree.prerequisites && tree.prerequisites.length > 0) {
-		const level1Nodes: LayoutNode[] = [];
-		const totalWidth =
-			tree.prerequisites.length * nodeWidth +
-			(tree.prerequisites.length - 1) * horizontalSpacing;
-		const startX = -totalWidth / 2 + nodeWidth / 2;
-		const level1Y = rootY + nodeHeight + verticalSpacing;
+		const nodes: VisualNode[] = [];
+		const pendingEdges: PendingEdge[] = [];
 
-		tree.prerequisites.forEach((prereq, index) => {
-			level1Nodes.push({
-				code: prereq.code,
-				name: prereq.name,
-				status: prereq.status,
-				x: startX + index * (nodeWidth + horizontalSpacing),
-				y: level1Y,
-				hasChildren: prereq.prerequisites && prereq.prerequisites.length > 0,
-				parentIndex: index
-			});
-		});
-		levels.push(level1Nodes);
+		let idCounter = 0;
+		const levelHeight = courseNodeHeight + verticalSpacing;
+		const widthCache = new Map<PrerequisiteNode, number>();
 
-		// Level 2: Prerequisites of prerequisites
-		const level2Nodes: LayoutNode[] = [];
+		const nextId = () => {
+			idCounter += 1;
+			return `node-${idCounter}`;
+		};
 
-		tree.prerequisites.forEach((prereq, parentIndex) => {
-			if (prereq.prerequisites && prereq.prerequisites.length > 0) {
-				const parentX = level1Nodes[parentIndex].x;
-				const childrenTotalWidth =
-					prereq.prerequisites.length * nodeWidth +
-					(prereq.prerequisites.length - 1) * horizontalSpacing;
-				const childrenStartX = parentX - childrenTotalWidth / 2 + nodeWidth / 2;
-				const level2Y = level1Y + nodeHeight + verticalSpacing;
+		const computeSubtreeWidth = (node: PrerequisiteNode): number => {
+			if (widthCache.has(node)) {
+				return widthCache.get(node)!;
+			}
 
-				prereq.prerequisites.forEach((child, childIndex) => {
-					level2Nodes.push({
-						code: child.code,
-						name: child.name,
-						status: child.status,
-						x: childrenStartX + childIndex * (nodeWidth + horizontalSpacing),
-						y: level2Y,
-						hasChildren: false,
-						parentIndex
-					});
+			const { width: nodeWidth } = getNodeDimensions(node.type);
+			const children = getChildren(node);
+
+			if (!children.length) {
+				widthCache.set(node, nodeWidth);
+				return nodeWidth;
+			}
+
+			const childWidths = children.map(child => computeSubtreeWidth(child));
+			const childrenSpan = childWidths.reduce(
+				(acc, w, index) => acc + w + (index > 0 ? horizontalSpacing : 0),
+				0
+			);
+			const totalWidth = Math.max(childrenSpan, nodeWidth);
+			widthCache.set(node, totalWidth);
+			return totalWidth;
+		};
+
+		const traverse = (
+			node: PrerequisiteNode,
+			depth: number,
+			xStart: number,
+			parentContext?: { id: string; type: 'course' | 'group'; operator?: 'AND' | 'OR' },
+			isRoot = false
+		) => {
+			const subtreeWidth = computeSubtreeWidth(node);
+			const { width: nodeWidth, height: nodeHeight } = getNodeDimensions(node.type);
+			const nodeId = nextId();
+			const nodeX = xStart + subtreeWidth / 2 - nodeWidth / 2;
+			const nodeY = depth * levelHeight;
+
+			const displayName =
+				node.type === 'group'
+					? node.label ?? (node.operator === 'OR' ? 'OR group' : 'AND group')
+					: node.name;
+
+			const visualNode: VisualNode = {
+				id: nodeId,
+				type: node.type,
+				code: node.type === 'course' ? node.code : undefined,
+				name: displayName,
+				status: node.type === 'course' ? node.status : undefined,
+				operator: node.type === 'group' ? node.operator : undefined,
+				relationship: node.relationship,
+				x: nodeX,
+				y: nodeY,
+				width: nodeWidth,
+				height: nodeHeight,
+				depth,
+				isRoot
+			};
+
+			nodes.push(visualNode);
+
+			if (parentContext) {
+				const relationship =
+					parentContext.type === 'group'
+						? parentContext.operator === 'OR'
+							? 'or'
+							: 'and'
+						: node.relationship ?? 'and';
+
+				pendingEdges.push({
+					id: `${parentContext.id}->${nodeId}`,
+					fromId: parentContext.id,
+					toId: nodeId,
+					relationship
 				});
 			}
-		});
 
-		if (level2Nodes.length > 0) {
-			levels.push(level2Nodes);
-		}
-	}
+			const children = getChildren(node);
 
-	let minLeft = Infinity;
-	let maxRight = -Infinity;
-	let minY = Infinity;
-	let maxY = -Infinity;
+			if (!children.length) {
+				return;
+			}
 
-	levels.forEach(level => {
-		level.forEach(node => {
-			const left = node.x - nodeWidth / 2;
-			const right = node.x + nodeWidth / 2;
-			minLeft = Math.min(minLeft, left);
-			maxRight = Math.max(maxRight, right);
-			minY = Math.min(minY, node.y);
-			maxY = Math.max(maxY, node.y + nodeHeight);
-		});
-	});
+			const childWidths = children.map(child => computeSubtreeWidth(child));
+			const childrenSpan = childWidths.reduce(
+				(acc, w, index) => acc + w + (index > 0 ? horizontalSpacing : 0),
+				0
+			);
 
-	if (!Number.isFinite(minLeft) || !Number.isFinite(maxRight)) {
-		return {
-			levels,
-			width: nodeWidth + horizontalPadding * 2,
-			height: nodeHeight + verticalPadding * 2
+			let cursor = xStart;
+			if (childrenSpan < subtreeWidth) {
+				cursor += (subtreeWidth - childrenSpan) / 2;
+			}
+
+			children.forEach((child, index) => {
+				const childWidth = childWidths[index];
+				traverse(
+					child,
+					depth + 1,
+					cursor,
+					{
+						id: nodeId,
+						type: node.type,
+						operator: isGroupNode(node) ? node.operator : undefined
+					},
+					false
+				);
+				cursor += childWidth;
+				if (index < children.length - 1) {
+					cursor += horizontalSpacing;
+				}
+			});
 		};
-	}
 
-	const shiftX = horizontalPadding - minLeft;
-	const shiftY = verticalPadding - minY;
+		traverse(rootNode, 0, 0, undefined, true);
 
-	levels.forEach(level => {
-		level.forEach(node => {
+		if (!nodes.length) {
+			return {
+				nodes: [],
+				edges: [],
+				width: courseNodeWidth + horizontalPadding * 2,
+				height: courseNodeHeight + verticalPadding * 2
+			};
+		}
+
+		let minX = Number.POSITIVE_INFINITY;
+		let minY = Number.POSITIVE_INFINITY;
+		let maxX = Number.NEGATIVE_INFINITY;
+		let maxY = Number.NEGATIVE_INFINITY;
+
+		nodes.forEach(node => {
+			minX = Math.min(minX, node.x);
+			minY = Math.min(minY, node.y);
+			maxX = Math.max(maxX, node.x + node.width);
+			maxY = Math.max(maxY, node.y + node.height);
+		});
+
+		if (!Number.isFinite(minX) || !Number.isFinite(maxX)) {
+			minX = 0;
+			maxX = courseNodeWidth;
+		}
+		if (!Number.isFinite(minY) || !Number.isFinite(maxY)) {
+			minY = 0;
+			maxY = courseNodeHeight;
+		}
+
+		const shiftX = horizontalPadding - minX;
+		const shiftY = verticalPadding - minY;
+
+		nodes.forEach(node => {
 			node.x += shiftX;
 			node.y += shiftY;
 		});
-	});
 
-	const width = maxRight - minLeft + horizontalPadding * 2;
-	const height = maxY - minY + verticalPadding * 2;
+		const width = maxX - minX + horizontalPadding * 2;
+		const height = maxY - minY + verticalPadding * 2;
 
-	return { levels, width, height };
-}
+		const nodeMap = new Map(nodes.map(node => [node.id, node]));
+		const edges: VisualEdgeSegment[] = pendingEdges
+			.map(edge => {
+				const fromNode = nodeMap.get(edge.fromId);
+				const toNode = nodeMap.get(edge.toId);
 
-const layout = $derived.by(() => calculateLayout());
-const levels = $derived.by(() => layout.levels);
-const svgWidth = $derived.by(() => layout.width);
-const svgHeight = $derived.by(() => layout.height);
+				if (!fromNode || !toNode) return null;
 
-function getEdges(levelData: LayoutNode[][]) {
-	const edges: Array<{ x1: number; y1: number; x2: number; y2: number }> = [];
+				return {
+					id: edge.id,
+					x1: fromNode.x + fromNode.width / 2,
+					y1: fromNode.y + fromNode.height,
+					x2: toNode.x + toNode.width / 2,
+					y2: toNode.y,
+					relationship: edge.relationship
+				};
+			})
+			.filter(Boolean) as VisualEdgeSegment[];
 
-	if (!tree || !tree.prerequisites || levelData.length < 2) {
-		return edges;
+		return {
+			nodes,
+			edges,
+			width: Math.max(width, courseNodeWidth + horizontalPadding * 2),
+			height: Math.max(height, courseNodeHeight + verticalPadding * 2)
+		};
 	}
-
-	// Edges from root to level 1
-	const root = levelData[0][0];
-	if (levelData[1]) {
-		levelData[1].forEach(node => {
-			edges.push({
-				x1: root.x,
-				y1: root.y + nodeHeight,
-				x2: node.x,
-				y2: node.y
-			});
-		});
-	}
-
-	// Edges from level 1 to level 2
-	if (levelData.length > 2 && tree.prerequisites && levelData[1] && levelData[2]) {
-		levelData[2].forEach(childNode => {
-			if (childNode.parentIndex !== undefined && levelData[1][childNode.parentIndex]) {
-				const parentNode = levelData[1][childNode.parentIndex];
-				edges.push({
-					x1: parentNode.x,
-					y1: parentNode.y + nodeHeight,
-					x2: childNode.x,
-					y2: childNode.y
-				});
-			}
-		});
-	}
-
-	return edges;
-}
-
-const edges = $derived.by(() => getEdges(levels));
 </script>
 
 {#if tree && tree.prerequisites && Array.isArray(tree.prerequisites) && tree.prerequisites.length > 0}
-    <div class="w-full overflow-x-auto overflow-y-hidden bg-white rounded-lg border border-gray-200 p-6 touch-pan-x">
-        <div class="mx-auto" style="max-width: {svgWidth}px;">
-            <svg
-                class="w-full h-auto"
-                viewBox="0 0 {svgWidth} {svgHeight}"
-                preserveAspectRatio="xMidYMin meet"
-            >
-			<!-- Arrow marker definition -->
-			<defs>
-				<marker
-					id="arrowhead"
-					markerWidth="10"
-					markerHeight="10"
-					refX="9"
-					refY="3"
-					orient="auto"
-				>
-					<polygon points="0 0, 10 3, 0 6" fill="#6b7280" />
-				</marker>
-			</defs>
-			
-			<!-- Draw edges first (behind nodes) -->
-			<g stroke="#6b7280" stroke-width="2" fill="none">
-				{#each edges as edge}
-					<path
-						d="M {edge.x1} {edge.y1} L {edge.x2} {edge.y2}"
-						marker-end="url(#arrowhead)"
-					/>
-				{/each}
-			</g>
-			
-			<!-- Draw nodes -->
-			{#each levels as level}
-				{#each level as node}
-					<g transform="translate({node.x - nodeWidth / 2}, {node.y})">
-						<!-- Node rectangle -->
-						<rect
-							width={nodeWidth}
-							height={nodeHeight}
-							rx="8"
-							fill={getStatusColor(node.status as 'met' | 'partial' | 'not-met')}
-							stroke="#1f2937"
-							stroke-width="2"
-							class="drop-shadow-lg"
+	<div class="w-full overflow-x-auto overflow-y-hidden bg-white rounded-lg border border-gray-200 p-6 touch-pan-x">
+		<div class="mx-auto" style="max-width: {svgWidth}px;">
+			<svg
+				class="w-full h-auto"
+				viewBox="0 0 {svgWidth} {svgHeight}"
+				preserveAspectRatio="xMidYMin meet"
+			>
+				<defs>
+					<marker id="solidArrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+						<polygon points="0 0, 10 3, 0 6" fill="#6b7280" />
+					</marker>
+					<marker id="dashedArrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+						<polygon points="0 0, 10 3, 0 6" fill="#4b5563" />
+					</marker>
+				</defs>
+
+				<!-- Edges -->
+				<g fill="none">
+					{#each visualEdges as edge}
+						<path
+							d={`M ${edge.x1} ${edge.y1} L ${edge.x2} ${edge.y2}`}
+							stroke={edge.relationship === 'or' ? '#4b5563' : '#6b7280'}
+							stroke-width="2.5"
+							stroke-dasharray={edge.relationship === 'or' ? '6 6' : undefined}
+							marker-end={`url(#${edge.relationship === 'or' ? 'dashedArrowhead' : 'solidArrowhead'})`}
 						/>
-						<!-- Node content -->
-						<foreignObject width={nodeWidth} height={nodeHeight} x="0" y="0">
-							<div class="flex flex-col items-center justify-center h-full p-2 text-white text-center">
-								<div class="text-xs font-medium opacity-75 mb-1">
-									{#if node.code === tree.courseCode}
-										Target Course
-									{:else}
-										{getStatusIcon(node.status as 'met' | 'partial' | 'not-met')} Prerequisite
+					{/each}
+				</g>
+
+				<!-- Nodes -->
+				{#each visualNodes as node (node.id)}
+					<g transform={`translate(${node.x}, ${node.y})`}>
+						{#if node.type === 'course'}
+							<rect
+								width={node.width}
+								height={node.height}
+								rx="10"
+								fill={node.status ? getStatusColor(node.status) : '#1f2937'}
+								stroke="#1f2937"
+								stroke-width="2"
+								class="drop-shadow"
+							/>
+							<foreignObject width={node.width} height={node.height}>
+								<div class="flex h-full flex-col items-center justify-center p-3 text-white text-center gap-1">
+									<div class="text-xs font-medium opacity-75">
+										{#if node.isRoot}
+											Target Course
+										{:else if node.status}
+										{getStatusIcon(node.status)} {getStatusLabel(node.status)}
+										{/if}
+									</div>
+									{#if node.code}
+										<div class="text-sm font-bold">{node.code}</div>
 									{/if}
+									<div class="text-xs leading-tight opacity-90">{node.name}</div>
 								</div>
-								<div class="text-sm font-bold w-full truncate">{node.code}</div>
-								<div class="text-xs mt-1 opacity-90 line-clamp-2 px-1 leading-tight">
-									{node.name}
+							</foreignObject>
+						{:else}
+							<rect
+								width={node.width}
+								height={node.height}
+								rx="12"
+								fill="#f3f4f6"
+								stroke="#4b5563"
+								stroke-dasharray="4 4"
+								stroke-width="2"
+							/>
+							<foreignObject width={node.width} height={node.height}>
+								<div class="flex h-full flex-col items-center justify-center gap-1 px-3 text-center text-gray-700">
+									<div class="text-xs font-semibold uppercase tracking-wide">
+										{node.operator === 'OR' ? 'OR group' : 'AND group'}
+									</div>
+									<div class="text-xs leading-tight">{node.name}</div>
 								</div>
-							</div>
-						</foreignObject>
+							</foreignObject>
+						{/if}
 					</g>
 				{/each}
-			{/each}
-		</svg>
+			</svg>
+		</div>
+
+		<!-- Legend -->
+		<div class="mt-6 grid gap-4 text-sm md:grid-cols-3">
+			<div class="flex items-center gap-2">
+				<div class="h-4 w-4 rounded bg-green-500"></div>
+				<span>Completed</span>
+			</div>
+			<div class="flex items-center gap-2">
+				<div class="h-4 w-4 rounded bg-yellow-500"></div>
+				<span>Eligible (requirements satisfied)</span>
+			</div>
+			<div class="flex items-center gap-2">
+				<div class="h-4 w-4 rounded bg-red-500"></div>
+				<span>Not met</span>
+			</div>
+			<div class="flex items-center gap-2 md:col-span-3">
+				<div class="h-4 w-4 rounded border border-dashed border-gray-500 bg-gray-100"></div>
+				<span>Gray dashed boxes group alternative or combined requirements</span>
+			</div>
+			<div class="flex items-center gap-2 md:col-span-3">
+				<div class="h-[2px] w-6 border-t border-dashed border-gray-500"></div>
+				<span>Dashed arrows indicate alternative (OR) pathways</span>
+			</div>
+		</div>
 	</div>
-	
-	<!-- Legend -->
-	<div class="mt-6 flex items-center justify-center gap-6 text-sm">
-		<div class="flex items-center gap-2">
-			<div class="w-4 h-4 rounded bg-green-500"></div>
-			<span>All prerequisites met</span>
-		</div>
-		<div class="flex items-center gap-2">
-			<div class="w-4 h-4 rounded bg-yellow-500"></div>
-			<span>Partially met</span>
-		</div>
-		<div class="flex items-center gap-2">
-			<div class="w-4 h-4 rounded bg-red-500"></div>
-			<span>Not met</span>
-		</div>
-	</div>
-</div>
 {/if}
